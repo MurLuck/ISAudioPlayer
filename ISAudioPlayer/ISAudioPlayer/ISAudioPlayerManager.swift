@@ -14,11 +14,22 @@ public func clearPlayersCach(){
     ISAudioPlayerManager.shared.deinitPlayers()
 }
 
-protocol ISAudioPlayerManagerDelegate {
-    func isPlaying(isPlaying:Bool)
+protocol ISAudioPlayerManagerDelegate{
+	
+	func didStopPlayer()
+	
+	func didPlayPlayer()
+	
+	func didPausePlayer()
+	
+	func didFinishPlaying()
+	
+	func didDeinitilizePlayer()
+	
+	func didUpdatePlayerCurrentPosition()
 }
 
-class ISAudioPlayerManager{
+class ISAudioPlayerManager:NSObject{
     
     static let shared = ISAudioPlayerManager()
     
@@ -28,7 +39,7 @@ class ISAudioPlayerManager{
     
     fileprivate var delegate:ISAudioPlayerManagerDelegate?
     
-    private init(){}
+    private override init(){}
     
     func initPlayer(withPath:String,showLogs:Bool){
         initPlayer(withPath: withPath, uniqeId:String.uuid,showLogs:showLogs)
@@ -38,7 +49,8 @@ class ISAudioPlayerManager{
         do {
             let player = try AVAudioPlayer(contentsOf: URL(fileURLWithPath: withPath))
             player.prepareToPlay()
-            
+            player.delegate = self
+			
             playerCach.setValue(player, forKey: uniqeId)
         }catch{
             logger.showVerbose = showLogs
@@ -48,6 +60,11 @@ class ISAudioPlayerManager{
     
     func deinitPlayer(uuid:String){
         if let player = playerCach.value(forKey: uuid) as? AVAudioPlayer{
+			
+			if uuid == activePlayer{
+				delegate?.didDeinitilizePlayer()
+			}
+			
             player.stop()
             playerCach.removeObject(forKey: uuid)
         }
@@ -72,41 +89,57 @@ class ISAudioPlayerManager{
         
         logger.showVerbose = showLogs
         logger.error("Player deasnt exist")
-        
+		
         return nil
     }
-    
+	
+	func getDuration(uuid:String,showLogs:Bool)->TimeInterval?{
+		
+		if let player = playerCach.value(forKey: uuid) as? AVAudioPlayer{
+			return player.duration
+		}
+		
+		        logger.showVerbose = showLogs
+		        logger.error("Player deasnt exist")
+		
+		return nil
+	}
+	
     func setPosition(uuid:String,showLogs:Bool,position:TimeInterval){
         if let player = playerCach.value(forKey: uuid) as? AVAudioPlayer{
             player.currentTime = position
+			delegate?.didUpdatePlayerCurrentPosition()
         }else{
             logger.showVerbose = showLogs
             logger.error("Player deasnt exist")
-            
+			
         }
     }
     
     func play(uuid:String,showLogs:Bool,delegate:ISAudioPlayerManagerDelegate?){
         do{
+			try AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayback)
+			try AVAudioSession.sharedInstance().setActive(true)
+			
             if !activePlayer.isEmpty && activePlayer != uuid{
                 if let player = playerCach.value(forKey: activePlayer) as? AVAudioPlayer{
                     player.pause()
+					self.delegate?.didPausePlayer()
                     logger.info("\(activePlayer) stoped playing")
-                    delegate?.isPlaying(isPlaying: false)
                 }
             }
             
             if let player = playerCach.value(forKey: uuid) as? AVAudioPlayer{
                 player.play()
-                logger.info("\(uuid) started playing")
+
                 activePlayer = uuid
                 self.delegate = delegate
+				self.delegate?.didPlayPlayer()
+                logger.info("\(uuid) started playing")
             }else{
                 logger.showVerbose = showLogs
                 logger.error("Player deasnt exist")
             }
-            try AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayback)
-            try AVAudioSession.sharedInstance().setActive(true)
         }catch{
             logger.showVerbose = showLogs
             logger.error(error.localizedDescription)
@@ -117,6 +150,8 @@ class ISAudioPlayerManager{
         do{
             if let player = playerCach.value(forKey: uuid) as? AVAudioPlayer{
                 player.pause()
+				
+				delegate?.didPausePlayer()
                 activePlayer = ""
             }else{
                 logger.showVerbose = showLogs
@@ -133,6 +168,7 @@ class ISAudioPlayerManager{
         do{
             if let player = playerCach.value(forKey: uuid) as? AVAudioPlayer{
                 player.stop()
+				delegate?.didStopPlayer()
             }else{
                 logger.showVerbose = showLogs
                 logger.error("Player deasnt exist")
@@ -143,4 +179,23 @@ class ISAudioPlayerManager{
             logger.error(error.localizedDescription)
         }
     }
+	
+	func isPlaying(uuid:String)->Bool{
+		if let player = playerCach.value(forKey: uuid) as? AVAudioPlayer{
+			return player.isPlaying
+		}
+		
+		return false
+	}
 }
+
+extension ISAudioPlayerManager:AVAudioPlayerDelegate{
+	func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+		player.currentTime = 0
+		delegate?.didFinishPlaying()
+	}
+	
+	func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+	}
+}
+
