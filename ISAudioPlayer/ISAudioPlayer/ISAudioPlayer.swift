@@ -12,10 +12,15 @@ import AVFoundation
 public class ISAudioPlayer:ISAudioPlayerManagerDelegate{
     
     private let uuid:String = String.uuid
-    private var isPlaying:Bool = false
     private var isPlayerExist:Bool = false
     private var currentPosition = 0
-    
+	
+	var isPlaying:Bool{
+		get{
+			return ISAudioPlayerManager.shared.isPlaying(uuid: uuid)
+		}
+	}
+	
     /// the audio file url
     let fileUrl:URL
     
@@ -23,10 +28,14 @@ public class ISAudioPlayer:ISAudioPlayerManagerDelegate{
     /// that connected this instance
     public var showLogs:Bool = false
     
-    public init?(fileUrl:URL){
+    public init(fileUrl:URL){
         self.fileUrl = fileUrl
         initPlayer()
     }
+	
+	public func deinitPlayer(){
+		ISAudioPlayerManager.shared.deinitPlayer(uuid: uuid)
+	}
 
     /// plays the audio
     public func play(){
@@ -35,7 +44,6 @@ public class ISAudioPlayer:ISAudioPlayerManagerDelegate{
         }
         
         ISAudioPlayerManager.shared.play(uuid: uuid, showLogs: showLogs,delegate:self)
-        isPlaying = true
     }
     
     /// use to pause the player so you can play(contnue) it later on 
@@ -46,7 +54,6 @@ public class ISAudioPlayer:ISAudioPlayerManagerDelegate{
         }
         
         ISAudioPlayerManager.shared.pause(uuid:uuid,showLogs: showLogs)
-        isPlaying = false
     }
     
     /// dont use unless you dont need anymore the player instead use pause
@@ -56,7 +63,6 @@ public class ISAudioPlayer:ISAudioPlayerManagerDelegate{
         }
         
         ISAudioPlayerManager.shared.stop(uuid:uuid,showLogs: showLogs)
-        isPlaying = false
     }
     
     
@@ -71,13 +77,29 @@ public class ISAudioPlayer:ISAudioPlayerManagerDelegate{
     public func getCurrentPosition() -> TimeInterval?{
         return ISAudioPlayerManager.shared.currentPosition(uuid: uuid, showLogs: showLogs)
     }
+	
+	public func getDuration() -> TimeInterval?{
+		return ISAudioPlayerManager.shared.getDuration(uuid:uuid,showLogs:showLogs)
+	}
     
     private func initPlayer(){
         ISAudioPlayerManager.shared.initPlayer(withPath:fileUrl.path,uniqeId:uuid,showLogs:showLogs)
         isPlayerExist = true
     }
-    
-    func isPlaying(isPlaying: Bool) {
-        self.isPlaying = isPlaying
-    }
+	
+	func didStopPlayer(){}
+	
+	func didPlayPlayer(){}
+	
+	func didPausePlayer(){}
+	
+	func didFinishPlaying(){}
+	
+	func didDeinitilizePlayer(){}
+	
+	func didUpdatePlayerCurrentPosition(){}
+	
+	func sup(){
+		
+	}
 }
