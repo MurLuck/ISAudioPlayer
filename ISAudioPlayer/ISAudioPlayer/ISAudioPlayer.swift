@@ -98,8 +98,4 @@ public class ISAudioPlayer:ISAudioPlayerManagerDelegate{
 	func didDeinitilizePlayer(){}
 	
 	func didUpdatePlayerCurrentPosition(){}
-	
-	func sup(){
-		
-	}
 }
